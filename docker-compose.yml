@@ -1,0 +1,24 @@
+services:
+  mysql: # MySQLコンテナの定義
+    image: mysql:8.0.37  # 使用するMySQLのイメージ（バージョン固定すると安定）
+    container_name: sns-mysql  # コンテナ名（任意）
+
+    environment: # 環境変数（初期設定）
+      MYSQL_ROOT_PASSWORD: pass   # rootユーザーのパスワード
+      MYSQL_DATABASE: sns_db      # 起動時に作成されるDB名
+      MYSQL_USER: app_user        # アプリ用ユーザー
+      MYSQL_PASSWORD: app_pass    # アプリ用ユーザーのパスワード
+      TZ: Asia/Tokyo              # タイムゾーンを日本時間に
+
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+
+    ports:
+      - "3306:3306"  # ホストの3306番ポートをコンテナの3306に割り当て
+
+    volumes:
+      - ./mysql_data:/var/lib/mysql  # データ永続化用（コンテナ削除しても残る）
+      - ./initdb:/docker-entrypoint-initdb.d  # 初期化SQLを配置するフォルダ
+      - ./conf.d:/etc/mysql/conf.d  # MySQL追加設定ファイルを読み込むフォルダ
