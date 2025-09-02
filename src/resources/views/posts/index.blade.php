@@ -12,10 +12,11 @@
     @endif
     <div style="flex:1">
       <p>{{ Str::limit($post->body, 140) }}</p>
-      <div class="muted">
-        by {{ $post->user->name ?? 'Unknown' }} ・ {{ $post->visibility->code ?? '-' }}
-      </div>
-      <div style="margin-top:8px">
+      <div class="muted">by {{ $post->user->name ?? 'Unknown' }} ・ {{ $post->visibility->code ?? '-' }}</div>
+
+      <div style="margin-top:8px; display:flex; gap:8px; align-items:center;">
+        <button class="like-btn" data-post-id="{{ $post->id }}" data-url="{{ route('posts.like', $post) }}">いいね</button>
+        <span class="muted">Likes: <span class="like-count" data-post-id="{{ $post->id }}">{{ $post->liked_by_users_count ?? 0 }}</span></span>
         <a href="{{ route('posts.show', $post) }}">詳細</a>
       </div>
     </div>
