@@ -31,4 +31,25 @@ class Post extends Model
     {
         return $this->hasMany(Comment::class)->latest('id');
     }
+
+    // 共通スコープ
+    public function scopePublic($query)
+    {
+        return $query->whereHas('visibility', fn($q) => $q->where('code', 'public'));
+    }
+
+    public function scopeWithBasics($query)
+    {
+        return $query->with(['user:id,name','visibility:id,code','attachment']);
+    }
+
+    public function scopeWithLikeCount($query)
+    {
+        return $query->withCount('likedByUsers');
+    }
+
+    public function scopeLatestFirst($query)
+    {
+        return $query->latest('id');
+    }
 }
