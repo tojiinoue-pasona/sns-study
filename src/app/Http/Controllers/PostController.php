@@ -3,25 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
-use App\Models\{Tag, Visibility, PostAttachment};
+use App\Models\{Tag, Visibility};
 use App\Http\Requests\PostStoreRequest;
 use App\Http\Requests\PostUpdateRequest;
-use App\Models\User; // 追加
-use Illuminate\Support\Facades\Storage;
-use App\Services\AuditLogger;
+use App\Models\User;
+use App\Services\PostService;
 
 class PostController extends Controller
 {
+    public function __construct(private PostService $postService) {}
+
     /**
      * 一覧
      */
     public function index()
     {
-        // 公開投稿のみ取得したい場合は whereHas を利用（必要に応じて調整）
+        // 共通読み込みはスコープ化
         $posts = Post::query()
-            ->with(['user:id,name','visibility:id,code','attachment'])
-            ->withCount('likedByUsers') // ← いいね数
-            ->latest('id')
+            ->withBasics()
+            ->withLikeCount()
+            ->latestFirst()
             ->paginate(10);
 
         return view('posts.index', compact('posts'));
@@ -44,38 +45,13 @@ class PostController extends Controller
     {
         $data = $request->validated();
 
-        // ユーザーID（認証導入前の暫定）
-        $userId = auth()->id() ?: \App\Models\User::query()->value('id');
+        $userId = auth()->id() ?: User::query()->value('id');
         if (!$userId) {
             return back()->withInput()->with('error', 'ユーザーが存在しないため投稿できません。');
         }
         $data['user_id'] = $userId;
 
-        $post = Post::create($data);
-
-        if (isset($data['tags'])) {
-            $post->tags()->sync($data['tags']);
-        }
-
-        if ($request->hasFile('image')) {
-            try {
-                $file = $request->file('image');
-                $path = $file->store('attachments', 'public');
-                $post->attachment()->create([
-                    'path' => $path,
-                    'mime' => $file->getClientMimeType(),
-                    'size' => $file->getSize(),
-                ]);
-                AuditLogger::uploadSucceeded($userId, $post->id, $path, $file->getClientMimeType(), (int)$file->getSize(), $request);
-            } catch (\Throwable $e) {
-                AuditLogger::uploadFailed('store_exception', $request, [
-                    'user_id' => $userId,
-                    'post_id' => $post->id,
-                    'error'   => $e->getMessage(),
-                ]);
-                return back()->withInput()->with('error', '画像の保存に失敗しました。');
-            }
-        }
+        $post = $this->postService->create($data, $request->file('image'), $request);
 
         return redirect()->route('posts.show', $post)->with('status', 'created');
     }
@@ -83,14 +59,8 @@ class PostController extends Controller
     /**
      * 詳細
      */
-    public function show(\App\Models\Post $post)
+    public function show(Post $post)
     {
-        // 可視性の簡易チェック（認証導入後は Policy::view に集約）
-        if ($post->visibility?->code !== 'public') {
-            // public 以外は 404（要件により調整）
-            // abort(404);
-        }
-
         $post->loadMissing([
             'user:id,name',
             'visibility:id,code',
@@ -98,9 +68,6 @@ class PostController extends Controller
             'attachment',
             'comments.user:id,name',
         ])->loadCount('likedByUsers');
-
-        // 著者ユーザーのフォロワー数
-        $post->user?->loadCount('followers');
 
         return view('posts.show', compact('post'));
     }
@@ -110,7 +77,6 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        $post->loadMissing(['tags', 'attachment']);
         $visibilities = Visibility::select('id','code')->get();
         $tags = Tag::orderBy('name')->get(['id','name']);
         return view('posts.edit', compact('post','visibilities','tags'));
@@ -121,35 +87,7 @@ class PostController extends Controller
      */
     public function update(PostUpdateRequest $request, Post $post)
     {
-        $data = $request->validated();
-
-        $post->update($data);
-
-        if (array_key_exists('tags', $data)) {
-            $post->tags()->sync($data['tags'] ?? []);
-        }
-
-        // 新しい画像があれば置き換え
-        if ($request->hasFile('image')) {
-            try {
-                if ($post->attachment && $post->attachment->path) {
-                    Storage::disk('public')->delete($post->attachment->path);
-                }
-                $file = $request->file('image');
-                $path = $file->store('attachments', 'public');
-                $post->attachment()->updateOrCreate(
-                    [],
-                    ['path' => $path, 'mime' => $file->getClientMimeType(), 'size' => $file->getSize()]
-                );
-                AuditLogger::uploadSucceeded(auth()->id() ?: (\App\Models\User::query()->value('id') ?? null), $post->id, $path, $file->getClientMimeType(), (int)$file->getSize(), $request);
-            } catch (\Throwable $e) {
-                AuditLogger::uploadFailed('update_exception', $request, [
-                    'post_id' => $post->id,
-                    'error'   => $e->getMessage(),
-                ]);
-                return back()->withInput()->with('error', '画像の保存に失敗しました。');
-            }
-        }
+        $this->postService->update($post, $request->validated(), $request->file('image'), $request);
 
         return redirect()->route('posts.show', $post)->with('status', 'updated');
     }
@@ -159,12 +97,8 @@ class PostController extends Controller
      */
     public function destroy(Post $post)
     {
-        // 添付ファイルの物理削除（FKでレコードは削除される）
-        if ($post->attachment && $post->attachment->path) {
-            Storage::disk('public')->delete($post->attachment->path);
-        }
+        // 添付削除は Policy 実装時に検討
         $post->delete();
-
         return redirect()->route('posts.index')->with('status', 'deleted');
     }
 }

@@ -17,33 +17,24 @@ class SearchController extends Controller
 
         $query = Post::query()
             ->select('posts.*')
-            ->with(['user:id,name', 'visibility:id,code', 'attachment'])
-            ->withCount('likedByUsers');
+            ->withBasics()
+            ->withLikeCount();
 
-        // 本文 LIKE（ワイルドカードをエスケープ）
         if ($q !== null && $q !== '') {
             $escaped = str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $q);
             $pattern = "%{$escaped}%";
             $query->whereRaw("posts.body LIKE ? ESCAPE '\\\\'", [$pattern]);
         }
 
-        // タグ絞り込み（JOIN）
         if (!empty($tag)) {
             $query->join('post_tags', 'post_tags.post_id', '=', 'posts.id')
                   ->where('post_tags.tag_id', $tag)
                   ->distinct('posts.id');
         }
 
-        // 空検索は全件表示（方針）
         $posts = $query->latest('posts.id')->paginate(10)->appends($data);
-
         $tags = Tag::query()->orderBy('name')->get(['id','name']);
 
-        return view('search.index', [
-            'posts' => $posts,
-            'tags'  => $tags,
-            'q'     => $q,
-            'tag'   => $tag,
-        ]);
+        return view('search.index', compact('posts','tags') + ['q'=>$q,'tag'=>$tag]);
     }
 }
