@@ -72,7 +72,7 @@ class PostController extends Controller
     /**
      * 詳細
      */
-    public function show(Post $post)
+    public function show(\App\Models\Post $post)
     {
         // 可視性の簡易チェック（認証導入後は Policy::view に集約）
         if ($post->visibility?->code !== 'public') {
@@ -87,6 +87,9 @@ class PostController extends Controller
             'attachment',
             'comments.user:id,name',
         ])->loadCount('likedByUsers');
+
+        // 著者ユーザーのフォロワー数
+        $post->user?->loadCount('followers');
 
         return view('posts.show', compact('post'));
     }

@@ -14,6 +14,7 @@
     .flash.error{background:#fff1f0; color:#a8071a; border:1px solid #ffa39e;}
     .error-text{color:#a8071a; font-size:0.9em;}
     .like-btn.liked{color:#d63384;}
+    .follow-btn.following{color:#0b5ed7; font-weight:600;}
   </style>
 </head>
 <body>
@@ -39,43 +40,50 @@
 
   <script>
   (() => {
-    const tokenEl = document.querySelector('meta[name="csrf-token"]');
-    const csrf = tokenEl ? tokenEl.content : '';
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
     async function toggleLike(btn) {
       const url = btn.dataset.url;
       const postId = btn.dataset.postId;
       btn.disabled = true;
       try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': csrf
-          }
-        });
+        const res = await fetch(url, { method: 'POST', headers: { 'Accept':'application/json', 'X-CSRF-TOKEN': csrf }});
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.message || 'エラーが発生しました');
 
-        const countEl = document.querySelector(`.like-count[data-post-id="${postId}"]`);
-        if (countEl) countEl.textContent = data.count ?? 0;
-
+        document.querySelector(`.like-count[data-post-id="${postId}"]`)?.replaceChildren(document.createTextNode(data.count ?? 0));
         const liked = !!data.liked;
         btn.classList.toggle('liked', liked);
         btn.textContent = liked ? 'いいね解除' : 'いいね';
       } catch (e) {
         alert(e.message || '通信エラー');
-      } finally {
-        btn.disabled = false;
-      }
+      } finally { btn.disabled = false; }
+    }
+
+    async function toggleFollow(btn) {
+      const url = btn.dataset.url;
+      const userId = btn.dataset.userId;
+      btn.disabled = true;
+      try {
+        const res = await fetch(url, { method: 'POST', headers: { 'Accept':'application/json', 'X-CSRF-TOKEN': csrf }});
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'エラーが発生しました');
+
+        document.querySelector(`.followers-count[data-user-id="${userId}"]`)?.replaceChildren(document.createTextNode(data.count ?? 0));
+        const following = !!data.following;
+        btn.classList.toggle('following', following);
+        btn.textContent = following ? 'フォロー解除' : 'フォローする';
+      } catch (e) {
+        alert(e.message || '通信エラー');
+      } finally { btn.disabled = false; }
     }
 
     document.addEventListener('click', (e) => {
-      const btn = e.target.closest('.like-btn');
-      if (btn) {
-        e.preventDefault();
-        toggleLike(btn);
-      }
+      const likeBtn = e.target.closest('.like-btn');
+      if (likeBtn) { e.preventDefault(); toggleLike(likeBtn); return; }
+
+      const followBtn = e.target.closest('.follow-btn');
+      if (followBtn) { e.preventDefault(); toggleFollow(followBtn); return; }
     });
   })();
   </script>
