@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Post;
-use App\Models\{Tag, Visibility};
+use App\Models\{Tag, Visibility, PostAttachment};
 use App\Http\Requests\PostStoreRequest;
 use App\Http\Requests\PostUpdateRequest;
 use App\Models\User; // 追加
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -17,7 +18,7 @@ class PostController extends Controller
     {
         // 公開投稿のみ取得したい場合は whereHas を利用（必要に応じて調整）
         $posts = Post::query()
-            ->with(['user:id,name', 'visibility:id,code'])
+            ->with(['user:id,name', 'visibility:id,code', 'attachment']) // 添付も取得
             ->latest('id')
             ->paginate(10);
 
@@ -41,23 +42,27 @@ class PostController extends Controller
     {
         $data = $request->validated();
 
-        // 認証導入後: 必ず auth()->id() を使う
-        $userId = auth()->id();
-
-        // 未導入の暫定対応：既存ユーザーのIDを利用（なければエラーに）
+        // ユーザーID（認証導入前の暫定）
+        $userId = auth()->id() ?: \App\Models\User::query()->value('id');
         if (!$userId) {
-            $userId = User::query()->value('id'); // 最初のユーザーID
-            if (!$userId) {
-                return back()->withInput()->with('error', 'ユーザーが存在しないため投稿できません。先にユーザーを作成してください。');
-            }
+            return back()->withInput()->with('error', 'ユーザーが存在しないため投稿できません。');
         }
-
         $data['user_id'] = $userId;
 
         $post = Post::create($data);
 
         if (isset($data['tags'])) {
             $post->tags()->sync($data['tags']);
+        }
+
+        // 画像保存（任意）
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('attachments', 'public');
+            $post->attachment()->create([
+                'path' => $path,
+                'mime' => $request->file('image')->getClientMimeType(),
+                'size' => $request->file('image')->getSize(),
+            ]);
         }
 
         return redirect()->route('posts.show', $post)->with('status', 'created');
@@ -74,7 +79,7 @@ class PostController extends Controller
             // abort(404);
         }
 
-        $post->loadMissing(['user:id,name', 'visibility:id,code', 'tags:id,name']);
+        $post->loadMissing(['user:id,name', 'visibility:id,code', 'tags:id,name', 'attachment']);
         return view('posts.show', compact('post'));
     }
 
@@ -83,7 +88,7 @@ class PostController extends Controller
      */
     public function edit(Post $post)
     {
-        $post->loadMissing('tags');
+        $post->loadMissing(['tags', 'attachment']);
         $visibilities = Visibility::select('id','code')->get();
         $tags = Tag::orderBy('name')->get(['id','name']);
         return view('posts.edit', compact('post','visibilities','tags'));
@@ -102,6 +107,23 @@ class PostController extends Controller
             $post->tags()->sync($data['tags'] ?? []);
         }
 
+        // 新しい画像があれば置き換え
+        if ($request->hasFile('image')) {
+            // 旧ファイル削除
+            if ($post->attachment && $post->attachment->path) {
+                Storage::disk('public')->delete($post->attachment->path);
+            }
+            $path = $request->file('image')->store('attachments', 'public');
+            $post->attachment()->updateOrCreate(
+                [], // hasOne なので条件なしで1件を更新/作成
+                [
+                    'path' => $path,
+                    'mime' => $request->file('image')->getClientMimeType(),
+                    'size' => $request->file('image')->getSize(),
+                ]
+            );
+        }
+
         return redirect()->route('posts.show', $post)->with('status', 'updated');
     }
 
@@ -110,7 +132,12 @@ class PostController extends Controller
      */
     public function destroy(Post $post)
     {
+        // 添付ファイルの物理削除（FKでレコードは削除される）
+        if ($post->attachment && $post->attachment->path) {
+            Storage::disk('public')->delete($post->attachment->path);
+        }
         $post->delete();
+
         return redirect()->route('posts.index')->with('status', 'deleted');
     }
 }

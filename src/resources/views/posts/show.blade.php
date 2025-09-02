@@ -5,7 +5,14 @@
 
 <article class="card">
   <div class="muted">by {{ $post->user->name }} ・ {{ $post->visibility->code }}</div>
-  <p style="white-space:pre-wrap; margin-top:8px">{{ $post->body }}</p>
+
+  @if($post->attachment)
+    <div style="margin-top:12px">
+      <img src="{{ asset('storage/'.$post->attachment->path) }}" alt="" style="max-width:100%;height:auto;border:1px solid #ddd;border-radius:8px;">
+    </div>
+  @endif
+
+  <p style="white-space:pre-wrap; margin-top:12px">{{ $post->body }}</p>
 
   @if($post->tags->isNotEmpty())
     <div style="margin-top:12px">
@@ -16,7 +23,7 @@
   @endif
 
   <div class="muted" style="margin-top:12px">
-    Likes: {{ $post->liked_by_users_count }}
+    Likes: {{ $post->liked_by_users_count ?? 0 }}
   </div>
 </article>
 @endsection

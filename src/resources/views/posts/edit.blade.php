@@ -3,7 +3,7 @@
 @section('content')
 <h1>Edit Post</h1>
 
-<form method="POST" action="{{ route('posts.update', $post) }}">
+<form method="POST" action="{{ route('posts.update', $post) }}" enctype="multipart/form-data">
   @csrf
   @method('PUT')
 
@@ -38,6 +38,18 @@
     @error('tags.*') <div class="error-text">{{ $message }}</div> @enderror
   </div>
   @endif
+
+  <div class="field">
+    <label for="image">画像（差し替え）</label><br>
+    <input type="file" id="image" name="image" accept="image/jpeg,image/png">
+    @error('image') <div class="error-text">{{ $message }}</div> @enderror
+
+    @if($post->attachment)
+      <div style="margin-top:8px">
+        <img src="{{ asset('storage/'.$post->attachment->path) }}" alt="" style="width:160px;height:160px;object-fit:cover;border:1px solid #ddd;border-radius:8px;">
+      </div>
+    @endif
+  </div>
 
   <button type="submit">更新</button>
   <a href="{{ route('posts.show', $post) }}">戻る</a>
