@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+@php use Illuminate\Support\Str; @endphp
+
 @section('content')
 <h1>Posts</h1>
 
