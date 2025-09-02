@@ -21,4 +21,9 @@ class Post extends Model
     {
         return $this->hasOne(PostAttachment::class);
     }
+
+    public function likedByUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'likes', 'post_id', 'user_id');
+    }
 }

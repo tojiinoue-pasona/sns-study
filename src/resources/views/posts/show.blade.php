@@ -22,8 +22,9 @@
     </div>
   @endif
 
-  <div class="muted" style="margin-top:12px">
-    Likes: {{ $post->liked_by_users_count ?? 0 }}
+  <div class="muted" style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+    <button class="like-btn" data-post-id="{{ $post->id }}" data-url="{{ route('posts.like', $post) }}">いいね</button>
+    Likes: <span class="like-count" data-post-id="{{ $post->id }}">{{ $post->liked_by_users_count ?? 0 }}</span>
   </div>
 </article>
 @endsection

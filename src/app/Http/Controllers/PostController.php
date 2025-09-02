@@ -18,7 +18,8 @@ class PostController extends Controller
     {
         // 公開投稿のみ取得したい場合は whereHas を利用（必要に応じて調整）
         $posts = Post::query()
-            ->with(['user:id,name', 'visibility:id,code', 'attachment']) // 添付も取得
+            ->with(['user:id,name','visibility:id,code','attachment'])
+            ->withCount('likedByUsers') // ← いいね数
             ->latest('id')
             ->paginate(10);
 
@@ -79,7 +80,8 @@ class PostController extends Controller
             // abort(404);
         }
 
-        $post->loadMissing(['user:id,name', 'visibility:id,code', 'tags:id,name', 'attachment']);
+        $post->loadMissing(['user:id,name','visibility:id,code','tags:id,name','attachment'])
+             ->loadCount('likedByUsers');
         return view('posts.show', compact('post'));
     }
 

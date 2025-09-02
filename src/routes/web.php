@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\PostLikeController;
 
 Route::get('/', fn () => redirect()->route('posts.index'));
 
@@ -16,3 +17,5 @@ Route::resource('posts', PostController::class)
         'edit' => 'posts.edit',
         'update' => 'posts.update',
     ]);
+
+Route::post('posts/{post}/like', PostLikeController::class)->name('posts.like');
