@@ -8,6 +8,7 @@ use App\Http\Requests\PostStoreRequest;
 use App\Http\Requests\PostUpdateRequest;
 use App\Models\User; // 追加
 use Illuminate\Support\Facades\Storage;
+use App\Services\AuditLogger;
 
 class PostController extends Controller
 {
@@ -56,14 +57,24 @@ class PostController extends Controller
             $post->tags()->sync($data['tags']);
         }
 
-        // 画像保存（任意）
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('attachments', 'public');
-            $post->attachment()->create([
-                'path' => $path,
-                'mime' => $request->file('image')->getClientMimeType(),
-                'size' => $request->file('image')->getSize(),
-            ]);
+            try {
+                $file = $request->file('image');
+                $path = $file->store('attachments', 'public');
+                $post->attachment()->create([
+                    'path' => $path,
+                    'mime' => $file->getClientMimeType(),
+                    'size' => $file->getSize(),
+                ]);
+                AuditLogger::uploadSucceeded($userId, $post->id, $path, $file->getClientMimeType(), (int)$file->getSize(), $request);
+            } catch (\Throwable $e) {
+                AuditLogger::uploadFailed('store_exception', $request, [
+                    'user_id' => $userId,
+                    'post_id' => $post->id,
+                    'error'   => $e->getMessage(),
+                ]);
+                return back()->withInput()->with('error', '画像の保存に失敗しました。');
+            }
         }
 
         return redirect()->route('posts.show', $post)->with('status', 'created');
@@ -120,19 +131,24 @@ class PostController extends Controller
 
         // 新しい画像があれば置き換え
         if ($request->hasFile('image')) {
-            // 旧ファイル削除
-            if ($post->attachment && $post->attachment->path) {
-                Storage::disk('public')->delete($post->attachment->path);
+            try {
+                if ($post->attachment && $post->attachment->path) {
+                    Storage::disk('public')->delete($post->attachment->path);
+                }
+                $file = $request->file('image');
+                $path = $file->store('attachments', 'public');
+                $post->attachment()->updateOrCreate(
+                    [],
+                    ['path' => $path, 'mime' => $file->getClientMimeType(), 'size' => $file->getSize()]
+                );
+                AuditLogger::uploadSucceeded(auth()->id() ?: (\App\Models\User::query()->value('id') ?? null), $post->id, $path, $file->getClientMimeType(), (int)$file->getSize(), $request);
+            } catch (\Throwable $e) {
+                AuditLogger::uploadFailed('update_exception', $request, [
+                    'post_id' => $post->id,
+                    'error'   => $e->getMessage(),
+                ]);
+                return back()->withInput()->with('error', '画像の保存に失敗しました。');
             }
-            $path = $request->file('image')->store('attachments', 'public');
-            $post->attachment()->updateOrCreate(
-                [], // hasOne なので条件なしで1件を更新/作成
-                [
-                    'path' => $path,
-                    'mime' => $request->file('image')->getClientMimeType(),
-                    'size' => $request->file('image')->getSize(),
-                ]
-            );
         }
 
         return redirect()->route('posts.show', $post)->with('status', 'updated');
