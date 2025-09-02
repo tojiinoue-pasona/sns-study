@@ -3,19 +3,12 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PostLikeController;
+use App\Http\Controllers\PostCommentController;
 
 Route::get('/', fn () => redirect()->route('posts.index'));
 
-Route::resource('posts', PostController::class)
-    ->only(['index', 'show', 'create', 'store', 'edit', 'update', 'destroy'])
-    ->names([
-        'index' => 'posts.index',
-        'show'  => 'posts.show',
-        'destroy' => 'posts.destroy',
-        'create' => 'posts.create',
-        'store' => 'posts.store',
-        'edit' => 'posts.edit',
-        'update' => 'posts.update',
-    ]);
+Route::resource('posts', PostController::class);
 
 Route::post('posts/{post}/like', PostLikeController::class)->name('posts.like');
+
+Route::post('posts/{post}/comments', PostCommentController::class)->name('posts.comments.store');
