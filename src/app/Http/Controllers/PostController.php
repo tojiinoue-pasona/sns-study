@@ -80,8 +80,14 @@ class PostController extends Controller
             // abort(404);
         }
 
-        $post->loadMissing(['user:id,name','visibility:id,code','tags:id,name','attachment'])
-             ->loadCount('likedByUsers');
+        $post->loadMissing([
+            'user:id,name',
+            'visibility:id,code',
+            'tags:id,name',
+            'attachment',
+            'comments.user:id,name',
+        ])->loadCount('likedByUsers');
+
         return view('posts.show', compact('post'));
     }
 

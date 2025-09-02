@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasOne};
+use Illuminate\Database\Eloquent\Relations\{BelongsTo, BelongsToMany, HasMany, HasOne};
 
 class Post extends Model
 {
@@ -25,5 +25,10 @@ class Post extends Model
     public function likedByUsers(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'likes', 'post_id', 'user_id');
+    }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class)->latest('id');
     }
 }
