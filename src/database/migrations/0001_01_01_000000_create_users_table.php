@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -35,6 +36,16 @@ return new class extends Migration
             $table->longText('payload');
             $table->integer('last_activity')->index();
         });
+
+        if (!Schema::hasColumn('users', 'role')) {
+            Schema::table('users', function (Blueprint $t) {
+                $t->string('role', 16)->default('user')->after('remember_token');
+                $t->index('role', 'idx_users_role');
+            });
+            try {
+                DB::statement("ALTER TABLE users ADD CONSTRAINT chk_users_role CHECK (role in ('user','admin'))");
+            } catch (\Throwable $e) {}
+        }
     }
 
     /**
@@ -42,6 +53,16 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::hasColumn('users', 'role')) {
+            Schema::table('users', function (Blueprint $t) {
+                $t->dropIndex('idx_users_role');
+                $t->dropColumn('role');
+            });
+            try {
+                DB::statement("ALTER TABLE users DROP CONSTRAINT chk_users_role");
+            } catch (\Throwable $e) {}
+        }
+
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
