@@ -4,7 +4,11 @@
 <p><a href="{{ route('posts.index') }}">← Back to Posts</a></p>
 
 <article class="card">
-  <div class="muted">by {{ $post->user->name }} ・ {{ $post->visibility->code }}</div>
+  <div class="muted" style="display:flex; gap:12px; align-items:center;">
+    <span>by {{ $post->user->name }} ・ {{ $post->visibility->code }}</span>
+    <button class="follow-btn" data-user-id="{{ $post->user->id }}" data-url="{{ route('users.follow', $post->user) }}">フォローする</button>
+    <span class="muted">Followers: <span class="followers-count" data-user-id="{{ $post->user->id }}">{{ $post->user->followers_count ?? 0 }}</span></span>
+  </div>
 
   @if($post->attachment)
     <div style="margin-top:12px">
@@ -30,7 +34,6 @@
 
 <section class="card" style="margin-top:16px;">
   <h3>コメント</h3>
-
   @forelse($post->comments as $comment)
     <div style="border-top:1px solid #eee; padding-top:8px; margin-top:8px;">
       <div class="muted">by {{ $comment->user->name }} ・ {{ $comment->created_at->diffForHumans() }}</div>
