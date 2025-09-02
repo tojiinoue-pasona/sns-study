@@ -18,6 +18,7 @@ class PostUpdateRequest extends FormRequest
             'visibility_id' => ['sometimes', 'required', 'integer', 'exists:visibilities,id'],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['integer', 'exists:tags,id'],
+            'image' => ['sometimes', 'nullable', 'image', 'mimes:jpeg,png', 'max:2048'],
         ];
     }
 

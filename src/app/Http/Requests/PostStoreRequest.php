@@ -18,6 +18,7 @@ class PostStoreRequest extends FormRequest
             'visibility_id' => ['required', 'integer', 'exists:visibilities,id'],
             'tags' => ['sometimes', 'array'],
             'tags.*' => ['integer', 'exists:tags,id'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png', 'max:2048'],
         ];
     }
 

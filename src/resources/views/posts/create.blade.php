@@ -3,7 +3,7 @@
 @section('content')
 <h1>Create Post</h1>
 
-<form method="POST" action="{{ route('posts.store') }}">
+<form method="POST" action="{{ route('posts.store') }}" enctype="multipart/form-data">
   @csrf
 
   <div class="field">
@@ -36,6 +36,12 @@
     @error('tags.*') <div class="error-text">{{ $message }}</div> @enderror
   </div>
   @endif
+
+  <div class="field">
+    <label for="image">画像（JPEG/PNG, 最大2MB）</label><br>
+    <input type="file" id="image" name="image" accept="image/jpeg,image/png">
+    @error('image') <div class="error-text">{{ $message }}</div> @enderror
+  </div>
 
   <button type="submit">保存</button>
   <a href="{{ route('posts.index') }}">キャンセル</a>
