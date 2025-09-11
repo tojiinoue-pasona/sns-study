@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite",
+        "demo-reset": "php artisan migrate:fresh --seed && php artisan storage:link && php artisan cache:clear && php artisan view:clear && php artisan config:clear",
+        "demo-start": "php artisan serve",
+        "security-test": "php artisan security:test",
+        "setup": "composer install && npm install && php artisan key:generate && npm run demo-reset && npm run build"
+    },
+    "devDependencies": {
+        "@tailwindcss/forms": "^0.5.2",
+        "@tailwindcss/vite": "^4.0.0",
+        "alpinejs": "^3.4.2",
+        "autoprefixer": "^10.4.2",
+        "axios": "^1.11.0",
+        "concurrently": "^9.0.1",
+        "laravel-vite-plugin": "^2.0.0",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^3.1.0",
+        "vite": "^7.0.4"
+    }
+}
